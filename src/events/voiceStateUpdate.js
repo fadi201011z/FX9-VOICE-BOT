@@ -1,5 +1,6 @@
 // ── Voice State Update ────────────────────────────────────────────────
 const { ChannelType, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const autoDelete = require("../utils/autoDelete");
 
 module.exports = {
   name: "voiceStateUpdate",
@@ -110,13 +111,15 @@ module.exports = {
         chData.ownerId = newOwner.id;
         const textCh = guild.channels.cache.get(chData.textChannelId);
         if (textCh) {
-          await textCh.send({
+          const msg = await textCh.send({
             embeds: [
               new EmbedBuilder()
                 .setDescription(`👑 انتقلت ملكية **${vc.name}** إلى <@${newOwner.id}> تلقائياً`)
-                .setColor(0xfee75c),
+                .setColor(0xfee75c)
+                .setFooter({ text: "تُحذف هذه الرسالة خلال 20 ثانية" }),
             ],
-          }).catch(() => {});
+          }).catch(() => null);
+          autoDelete(msg, 20);
         }
         console.log(`[TempVC] 👑 Ownership → ${newOwner.user.tag}`);
       }

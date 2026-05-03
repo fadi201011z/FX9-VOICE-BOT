@@ -1,34 +1,33 @@
 // ── Permission System ─────────────────────────────────────────────────
+// Defines who can use each command and provides runtime checks.
+
 const { AUTHORIZED_SETUP_IDS } = require("./config");
 
-// ضع هنا أيديهات الرتبتين المسموح لهما باستخدام setup و help فقط
-const SPECIAL_ROLES = [
-  "1499391819899998269", // ايدي الرتبة الأولى
-  "1499390834867441756"  // ايدي الرتبة الثانية
-];
-
 const LEVELS = {
-  RESTRICTED: 0, // مستوى محصن (للرتب المحددة فقط)
-  EVERYONE:   1, 
-  VC_MEMBER:  2, 
+  EVERYONE:   0,  // كل المستخدمين
+  VC_MEMBER:  1,  // يجب أن يكون في قناة صوتية
+  MODERATOR:  2,  // يملك صلاحية ManageChannels
+  ADMIN:      3,  // يملك صلاحية ManageGuild / Administrator
+  BOT_OWNER:  4,  // في قائمة AUTHORIZED_SETUP_IDS فقط
 };
 
+// Command permission map
 const COMMANDS = {
-  // الأوامر المحصورة للرتب المحددة
-  help:       { level: LEVELS.RESTRICTED, icon: "📖", label: "الرتب الخاصة فقط", category: "عام" },
-  setup:      { level: LEVELS.RESTRICTED, icon: "⚙️", label: "الرتب الخاصة فقط", category: "إعداد" },
-  
-  // بقية الأوامر
-  ping:       { level: LEVELS.EVERYONE,   icon: "🏓", label: "الجميع",          category: "عام" },
-  play:       { level: LEVELS.VC_MEMBER,  icon: "🎵", label: "أعضاء الصوت",     category: "موسيقى" },
-  search:     { level: LEVELS.VC_MEMBER,  icon: "🔍", label: "أعضاء الصوت",     category: "موسيقى" },
-  pause:      { level: LEVELS.VC_MEMBER,  icon: "⏸️", label: "أعضاء الصوت",     category: "موسيقى" },
-  skip:       { level: LEVELS.VC_MEMBER,  icon: "⏭️", label: "أعضاء الصوت",     category: "موسيقى" },
-  stop:       { level: LEVELS.VC_MEMBER,  icon: "⏹️", label: "أعضاء الصوت",     category: "موسيقى" },
-  volume:     { level: LEVELS.VC_MEMBER,  icon: "🔊", label: "أعضاء الصوت",     category: "موسيقى" },
-  loop:       { level: LEVELS.VC_MEMBER,  icon: "🔁", label: "أعضاء الصوت",     category: "موسيقى" },
-  queue:      { level: LEVELS.EVERYONE,   icon: "📋", label: "الجميع",          category: "موسيقى" },
-  nowplaying: { level: LEVELS.EVERYONE,   icon: "▶️", label: "الجميع",          category: "موسيقى" },
+  help:       { level: LEVELS.EVERYONE,  icon: "📖", label: "الجميع",                   category: "عام" },
+  ping:       { level: LEVELS.EVERYONE,  icon: "🏓", label: "الجميع",                   category: "عام" },
+  setup:      { level: LEVELS.BOT_OWNER, icon: "⚙️", label: "مالك البوت والمطور فقط", category: "إعداد" },
+  play:       { level: LEVELS.VC_MEMBER, icon: "🎵", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  search:     { level: LEVELS.VC_MEMBER, icon: "🔍", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  pause:      { level: LEVELS.VC_MEMBER, icon: "⏸️", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  skip:       { level: LEVELS.VC_MEMBER, icon: "⏭️", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  stop:       { level: LEVELS.VC_MEMBER, icon: "⏹️", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  volume:     { level: LEVELS.VC_MEMBER, icon: "🔊", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  loop:       { level: LEVELS.VC_MEMBER, icon: "🔁", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  queue:      { level: LEVELS.EVERYONE,  icon: "📋", label: "الجميع",                   category: "موسيقى" },
+  nowplaying: { level: LEVELS.EVERYONE,  icon: "▶️", label: "الجميع",                   category: "موسيقى" },
+  shuffle:    { level: LEVELS.VC_MEMBER, icon: "🔀", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  remove:     { level: LEVELS.VC_MEMBER, icon: "🗑️", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
+  clearqueue: { level: LEVELS.VC_MEMBER, icon: "🧹", label: "أعضاء القناة الصوتية",     category: "موسيقى" },
 };
 
 // ── Runtime Check ─────────────────────────────────────────────────────
@@ -36,36 +35,37 @@ function check(interaction, commandName) {
   const perm = COMMANDS[commandName];
   if (!perm) return { allowed: true };
 
-  // 1. فحص صارم لأوامر help و setup
-  if (perm.level === LEVELS.RESTRICTED) {
-    const hasRole = interaction.member.roles.cache.some(role => SPECIAL_ROLES.includes(role.id));
-    const isOwner = AUTHORIZED_SETUP_IDS.includes(interaction.user.id);
-
-    if (!hasRole && !isOwner) {
-      return {
-        allowed: false,
-        reason: "❌ عذراً، هذا الأمر (help/setup) متاح فقط للرتب الإدارية المحددة.",
-      };
-    }
-    return { allowed: true };
-  }
-
-  // 2. فحص بقية الأوامر العادية
   switch (perm.level) {
     case LEVELS.EVERYONE:
       return { allowed: true };
 
     case LEVELS.VC_MEMBER:
-      if (!interaction.member.voice.channel) {
-        return {
-          allowed: false,
-          reason: "❌ يجب أن تكون في قناة صوتية لاستخدام أوامر الموسيقى.",
-        };
-      }
-      return { allowed: true };
+      return {
+        allowed: !!interaction.member.voice.channel,
+        reason:  "❌ يجب أن تكون في قناة صوتية لاستخدام هذا الأمر.",
+      };
+
+    case LEVELS.MODERATOR:
+      return {
+        allowed: interaction.member.permissions.has("ManageChannels"),
+        reason:  "❌ يجب أن تملك صلاحية **إدارة القنوات** لاستخدام هذا الأمر.",
+      };
+
+    case LEVELS.ADMIN:
+      return {
+        allowed: interaction.member.permissions.has("ManageGuild") ||
+                 interaction.member.permissions.has("Administrator"),
+        reason:  "❌ يجب أن تملك صلاحية **إدارة السيرفر** لاستخدام هذا الأمر.",
+      };
+
+    case LEVELS.BOT_OWNER:
+      return {
+        allowed: AUTHORIZED_SETUP_IDS.includes(interaction.user.id),
+        reason:  "❌ هذا الأمر مخصص لمالك البوت والمطور فقط.",
+      };
 
     default:
-      return { allowed: false, reason: "❌ لا تملك صلاحية." };
+      return { allowed: false, reason: "❌ لا تملك صلاحية استخدام هذا الأمر." };
   }
 }
 

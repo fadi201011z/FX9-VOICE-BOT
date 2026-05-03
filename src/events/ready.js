@@ -68,5 +68,36 @@ module.exports = {
         await updateNowPlayingEmbed(client, guildId);
       }
     }, 12_000);
+
+    // ── Refresh/restore panel every 30 minutes ────────────────────────
+    // Re-sends or edits the panel if it was deleted or is outdated
+    setInterval(async () => {
+      console.log("[TempVC] 🔄 Running 30-min panel refresh...");
+      for (const [guildId, setup] of getAllSetups()) {
+        try {
+          const guild  = client.guilds.cache.get(guildId);
+          if (!guild) continue;
+          const textCh = guild.channels.cache.get(setup.textChannelId);
+          if (!textCh) continue;
+
+          const count = getActiveCount(guildId);
+          const panel = buildStatusPanel(setup, count);
+
+          if (setup.panelMessageId) {
+            const existing = await textCh.messages.fetch(setup.panelMessageId).catch(() => null);
+            if (existing) {
+              await existing.edit(panel).catch(() => {});
+              continue;
+            }
+          }
+          // Panel was deleted — re-send it
+          const msg = await textCh.send(panel);
+          updatePanelMessageId(guildId, msg.id);
+          console.log(`[TempVC] ✅ Panel re-sent for guild ${guildId}`);
+        } catch (err) {
+          console.error(`[TempVC] ❌ 30-min refresh for ${guildId}:`, err.message);
+        }
+      }
+    }, 30 * 60 * 1000);
   },
 };

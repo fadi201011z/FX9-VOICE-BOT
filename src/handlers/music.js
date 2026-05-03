@@ -167,7 +167,13 @@ function resetIdleTimer(client, guildId) {
     client.musicQueues.delete(guildId);
     try {
       const ch = client.guilds.cache.get(guildId)?.channels.cache.get(q.textChannelId);
-      await ch?.send({ embeds: [new EmbedBuilder().setDescription("🔌 غادر البوت القناة بسبب عدم النشاط.").setColor(0xfee75c)] });
+      const msg = await ch?.send({
+        embeds: [new EmbedBuilder()
+          .setDescription("🔌 غادر البوت القناة بسبب عدم النشاط.")
+          .setColor(0xfee75c)
+          .setFooter({ text: "تُحذف هذه الرسالة خلال 20 ثانية" })],
+      });
+      if (msg?.deletable) setTimeout(() => msg.delete().catch(() => {}), 20_000);
     } catch (_) {}
   }, 3 * 60 * 1000);
 }
@@ -302,7 +308,17 @@ async function sendQueueEndEmbed(client, queue) {
     const ch = client.guilds.cache.get(queue.guildId)?.channels.cache.get(queue.textChannelId);
     if (!ch || !queue.playerMessageId) return;
     const msg = await ch.messages.fetch(queue.playerMessageId).catch(() => null);
-    if (msg) await msg.edit({ embeds: [new EmbedBuilder().setDescription("✅ انتهت قائمة التشغيل.").setColor(0xfee75c)], components: [] }).catch(() => {});
+    if (msg) {
+      await msg.edit({
+        embeds: [new EmbedBuilder()
+          .setDescription("✅ انتهت قائمة التشغيل.")
+          .setColor(0xfee75c)
+          .setFooter({ text: "تُحذف هذه الرسالة خلال 30 ثانية" })],
+        components: [],
+      }).catch(() => {});
+      // Auto-delete the ended-queue message after 30s
+      setTimeout(() => msg.delete().catch(() => {}), 30_000);
+    }
     queue.playerMessageId = null;
   } catch (_) {}
 }
@@ -310,7 +326,13 @@ async function sendQueueEndEmbed(client, queue) {
 async function sendErrorEmbed(client, queue, track, reason) {
   try {
     const ch = client.guilds.cache.get(queue.guildId)?.channels.cache.get(queue.textChannelId);
-    await ch?.send({ embeds: [new EmbedBuilder().setDescription(`⚠️ **${track.title}**\n\`${reason.slice(0, 200)}\`\nجاري التخطي...`).setColor(0xed4245)] }).catch(() => {});
+    const msg = await ch?.send({
+      embeds: [new EmbedBuilder()
+        .setDescription(`⚠️ **${track.title}**\n\`${reason.slice(0, 200)}\`\nجاري التخطي...`)
+        .setColor(0xed4245)
+        .setFooter({ text: "تُحذف هذه الرسالة خلال 15 ثانية" })],
+    }).catch(() => null);
+    if (msg?.deletable) setTimeout(() => msg.delete().catch(() => {}), 15_000);
   } catch (_) {}
 }
 
